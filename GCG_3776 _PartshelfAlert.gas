@@ -1,0 +1,461 @@
+Program.Sub.ScreenSU.Start
+gui.frmpartshelf..create
+gui.frmpartshelf..caption("Part Shelf Life Alert")
+gui.frmpartshelf..size(5550,9240)
+gui.frmpartshelf..minx(0)
+gui.frmpartshelf..miny(0)
+gui.frmpartshelf..position(0,0)
+gui.frmpartshelf..event(unload,frmpartshelf_unload)
+gui.frmpartshelf..alwaysontop(False)
+gui.frmpartshelf..fontname("Arial")
+gui.frmpartshelf..fontsize(8)
+gui.frmpartshelf..forecolor(0)
+gui.frmpartshelf..fontstyle(,,,,)
+gui.frmpartshelf..BackColor(-2147483633)
+gui.frmpartshelf..controlbox(True)
+gui.frmpartshelf..maxbutton(False)
+gui.frmpartshelf..minbutton(False)
+gui.frmpartshelf..mousepointer(0)
+gui.frmpartshelf..moveable(True)
+gui.frmpartshelf..sizeable(False)
+gui.frmpartshelf..ShowInTaskBar(True)
+gui.frmpartshelf..titlebar(True)
+gui.frmpartshelf.lbl1.create(label,"Part",True,1935,255,1,200,290,True,0,Arial,8,-2147483633,0)
+gui.frmpartshelf.lbl1.defaultvalue("")
+gui.frmpartshelf.lbl1.controlgroup(0)
+gui.frmpartshelf.txtPart.create(textbox,"",True,2235,300,0,185,500,True,0,Arial,8,-2147483643,1)
+gui.frmpartshelf.txtPart.defaultvalue("")
+gui.frmpartshelf.txtPart.controlgroup(0)
+gui.frmpartshelf.cmdBrowse.create(button)
+gui.frmpartshelf.cmdBrowse.caption("^")
+gui.frmpartshelf.cmdBrowse.visible(True)
+gui.frmpartshelf.cmdBrowse.size(405,270)
+gui.frmpartshelf.cmdBrowse.zorder(0)
+gui.frmpartshelf.cmdBrowse.position(2435,490)
+gui.frmpartshelf.cmdBrowse.enabled(True)
+gui.frmpartshelf.cmdBrowse.fontname("Arial")
+gui.frmpartshelf.cmdBrowse.fontsize(8)
+gui.frmpartshelf.cmdBrowse.event(click,cmdbrowse_click)
+gui.frmpartshelf.cmdBrowse.defaultvalue("")
+gui.frmpartshelf.cmdBrowse.controlgroup(0)
+gui.frmpartshelf.cmdAdd.create(button)
+gui.frmpartshelf.cmdAdd.caption("&Add")
+gui.frmpartshelf.cmdAdd.visible(True)
+gui.frmpartshelf.cmdAdd.size(855,375)
+gui.frmpartshelf.cmdAdd.zorder(0)
+gui.frmpartshelf.cmdAdd.position(4285,455)
+gui.frmpartshelf.cmdAdd.enabled(True)
+gui.frmpartshelf.cmdAdd.fontname("Arial")
+gui.frmpartshelf.cmdAdd.fontsize(8)
+gui.frmpartshelf.cmdAdd.event(click,cmdadd_click)
+gui.frmpartshelf.cmdAdd.defaultvalue("")
+gui.frmpartshelf.cmdAdd.controlgroup(0)
+gui.frmpartshelf.gsPart.create(gsflexgrid)
+gui.frmpartshelf.gsPart.FixedRows(0)
+gui.frmpartshelf.gsPart.FixedCols(0)
+gui.frmpartshelf.gsPart.visible(True)
+gui.frmpartshelf.gsPart.size(4980,7650)
+gui.frmpartshelf.gsPart.zorder(0)
+gui.frmpartshelf.gsPart.position(175,870)
+gui.frmpartshelf.gsPart.enabled(True)
+gui.frmpartshelf.gsPart.event(commandclick,gspart_commandclick)
+gui.frmpartshelf.lbl4.create(label,"Day(s)",True,1170,255,1,2915,290,True,0,Arial,8,-2147483633,0)
+gui.frmpartshelf.lbl4.defaultvalue("")
+gui.frmpartshelf.lbl4.controlgroup(0)
+gui.frmpartshelf.txtWeeks.create(textbox,"",True,1215,300,0,2915,500,True,0,Arial,8,-2147483643,1)
+gui.frmpartshelf.txtWeeks.numericonly(2)
+gui.frmpartshelf.txtWeeks.maxLength(3)
+gui.frmpartshelf.txtWeeks.defaultvalue("")
+gui.frmpartshelf.txtWeeks.controlgroup(0)
+
+
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Variable.UDT.uParts.Define("Part",String,Part)
+Variable.UDT.uParts.Define("weeks",long,Weeks)
+Variable.uGlobal.uParts.Declare("uParts")
+Variable.UDT.uAlert.Define("part",String,part)
+Variable.UDT.uAlert.Define("date_expiration",Date,date_expiration)
+Variable.UDT.uAlert.Define("bin",String)
+Variable.UDT.uAlert.Define("heat",String)
+Variable.UDT.uAlert.Define("location",String)
+Variable.UDT.uAlert.Define("lot",String)
+Variable.UDT.uAlert.Define("quantity",Long,quantity)
+Variable.UDT.uAlert.Define("serial",String)
+Variable.uGlobal.uAlert.Declare("uAlert")
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+
+
+' RAN 04/112016
+' Project Name: - PORCVD Quote 7599 - Notification - Shelf Life expiration for Parts -
+' Jormac Aerospace, Inc
+
+V.Local.sSql.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.bretval.Declare(Boolean)
+V.Local.sUser.Declare(String)
+
+'F.Intrinsic.Debug.InvokeDebugger
+'F.Intrinsic.Debug.Stop
+
+
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass,2000)
+
+F.Intrinsic.Control.If(Variable.Ambient.IsInTaskScheduler,=,True)
+	F.Intrinsic.Control.CallSub(Alert)
+F.Intrinsic.Control.Else
+	'Maintenance Process
+		F.Intrinsic.Control.CallSub(Buildstyle)
+		V.Local.sSql.Set("select part,weeks from GCG_3776_PartAlert order by part")
+		F.ODBC.Connection!con.OpenLocalRecordsetRO("rst",V.Local.sSql)
+		F.Intrinsic.Control.if(V.ODBC.con!rst.EOF,=,False)
+			F.Intrinsic.Variable.LoadUDTFromRecordset("CON","RST","V.uGlobal.uParts",False)
+			Gui.frmpartshelf.gsPart.LoadFromUDT("V.uGlobal.uParts","Part::0*!*Weeks::1",1)
+		F.Intrinsic.Control.Else
+			Gui.frmpartshelf.gsPart.Rows(1)
+		F.Intrinsic.Control.EndIf
+
+		F.ODBC.con!rst.Close
+		Gui.frmpartshelf..Show
+F.Intrinsic.Control.EndIf
+
+
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3776_PartshelfAlert.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Main.End
+
+program.sub.cmdadd_click.start
+F.Intrinsic.Control.SetErrorHandler("cmdadd_click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+V.Local.sSql.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.i.Declare(Long)
+V.Local.j.Declare(Long)
+V.local.sReturn.Declare(String)
+
+
+V.Local.sRet.Set(V.Screen.frmpartshelf!txtPart.Text)
+F.Intrinsic.Control.If(V.Local.sRet.Trim,=,"")
+	F.Intrinsic.UI.Msgbox("Invalid Part No")
+	Gui.frmpartshelf.txtPart.SetFocus
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.elseif(V.Screen.frmpartshelf!txtWeeks.Text,=,"")
+	F.Intrinsic.UI.Msgbox("Invalid no of weeks")
+	Gui.frmpartshelf.txtWeeks.SetFocus
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+'F.Intrinsic.Debug.InvokeDebugger
+'F.Intrinsic.Debug.Stop
+
+'Duplicate check
+F.Intrinsic.Variable.UDTSeek(V.uglobal.uParts!part,V.Local.sRet.Trim,2,V.local.sReturn)
+
+F.Intrinsic.Control.If(V.local.sReturn.trim,=,"")
+	F.Intrinsic.String.Build("Insert Into GCG_3776_PartAlert(Part,weeks) values('{0}',{1})",V.Local.sRet.trim,V.Screen.frmpartshelf!txtWeeks.Text,V.Local.sSql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+
+
+	V.Local.j.Set(V.Screen.frmpartshelf!gsPart.Rows)
+	V.Local.i.Set(V.Screen.frmpartshelf!gsPart.Rows)
+
+	F.Intrinsic.Math.Add(V.Local.i,1,V.Local.i)
+	Gui.frmpartshelf.gsPart.rows(V.Local.i)
+
+	Gui.frmpartshelf.gsPart.TextMatrix(0,V.Local.j,V.Local.sRet)
+	Gui.frmpartshelf.gsPart.TextMatrix(1,V.Local.j,V.Screen.frmpartshelf!txtWeeks.Text)
+	Gui.frmpartshelf.gsPart.ApplyStyle(V.Local.j,1)
+
+'	Gui.FormName.GSFlexgrid.ExportToUDT(UDT,ColumnOrder,LoadElements,StartRow,EndRow,Preserveboolean)
+
+	'Add to UDT
+	V.uglobal.uParts(V.uglobal.uParts.UBound)!Part.Set(V.Local.sRet.trim)
+	V.uglobal.uParts(V.uglobal.uParts.UBound)!weeks.Set(V.Screen.frmpartshelf!txtWeeks.Text)
+F.Intrinsic.Control.EndIf
+
+Gui.frmpartshelf.txtPart.Text("")
+Gui.frmpartshelf.txtWeeks.Text("")
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdadd_click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3069_PrivateGLAccount.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+program.sub.cmdadd_click.end
+
+program.sub.cmdbrowse_click.start
+F.Intrinsic.Control.SetErrorHandler("cmdbrowse_click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+
+V.Local.sSql.Declare(String)
+V.Local.sTitles.Declare(String)
+V.Local.sWidths.Declare(String)
+V.Local.sRet.Declare(String)
+
+
+V.Local.sSql.Set("select part,Location from "INVENTORY_MST3" where shelf_life = 'Y' order by part")
+
+'Browser for select Record from table
+F.Intrinsic.String.Split("Part*!*Location","*!*",V.Local.sTitles)
+'F.Intrinsic.String.Split("1800*!*800*!*500*!*1800","*!*",V.Local.iWidths)
+V.Local.sWidths.Set("2500*!*1900")
+F.Intrinsic.UI.SetBrowserHotTypeAhead(True)
+'F.Intrinsic.UI.MiniBrowser("Select Commission Type",conx,V.Local.sSql,V.Local.sTitles,V.Local.iWidths,V.Local.sRet)
+F.Intrinsic.UI.Browser("Select part","con",V.Local.sSql,V.Local.sTitles,V.Local.sWidths,V.Local.sRet)
+'F.ODBC.Connection!conx.Close
+F.Intrinsic.Control.If(V.Local.sRet,"<>","***CANCEL***")
+	F.Intrinsic.String.Split(V.Local.sRet,"*!*",V.Local.sRet)
+	Gui.frmpartshelf.txtPart.text(V.Local.sRet(0))
+F.Intrinsic.Control.EndIf
+
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdbrowse_click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3776_PartshelfAlert.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+program.sub.cmdbrowse_click.end
+
+Program.Sub.buildstyle.Start
+F.Intrinsic.Control.SetErrorHandler("buildstyle_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+
+
+Gui.frmpartshelf.gsPart.Cols(3)
+Gui.frmpartshelf.gsPart.Rows(2)
+Gui.frmpartshelf.gsPart.FixedCols(0)
+Gui.frmpartshelf.gsPart.FixedRows(1)
+
+
+Gui.frmpartshelf.gsPart.TextMatrix(0,0,"Part")
+
+Gui.frmpartshelf.gsPart.ColWidth(0,2200)
+Gui.frmpartshelf.gsPart.BuildStyle(1,0,"type","locked",True)
+Gui.frmpartshelf.gsPart.BuildStyle(1,0,"fontstyle","bold",True)
+Gui.frmpartshelf.gsPart.BuildStyle(1,0,"Format","alignment",1)
+
+
+Gui.frmpartshelf.gsPart.TextMatrix(1,0,"Day(s)")
+Gui.frmpartshelf.gsPart.ColWidth(1,800)
+Gui.frmpartshelf.gsPart.BuildStyle(1,1,"type","locked",True)
+Gui.frmpartshelf.gsPart.BuildStyle(1,1,"fontstyle","bold",True)
+Gui.frmpartshelf.gsPart.BuildStyle(1,1,"Format","alignment",1)
+
+
+Gui.frmpartshelf.gsPart.TextMatrix(2,0,"Delete")
+Gui.frmpartshelf.gsPart.ColWidth(2,1200)
+Gui.frmpartshelf.gsPart.BuildStyle(1,2,"fontstyle","bold",True)
+Gui.frmpartshelf.gsPart.BuildStyle(1,2,"type","command","Delete")
+Gui.frmpartshelf.gsPart.BuildStyle(1,2,"Format","alignment",4)
+
+Gui.frmpartshelf.gsPart.ApplyStyle(0,1)
+
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("buildstyle_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3776_PartshelfAlert.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.buildstyle.End
+
+program.sub.frmpartshelf_unload.start
+F.Intrinsic.Control.SetErrorHandler("frmpartshelf_unload_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+
+
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.End
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("frmpartshelf_unload_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3776_PartshelfAlert.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+program.sub.frmpartshelf_unload.end
+
+program.sub.gspart_commandclick.start
+F.Intrinsic.Control.SetErrorHandler("gspart_commandclick_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+
+V.Local.sSql.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.sReturn.Declare(String)
+
+
+F.Intrinsic.Control.If(V.Args.key,=,0)
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.endif
+
+F.Intrinsic.Control.If(V.Args.Column,<>,2)
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.endif
+
+
+Gui.frmpartshelf.gsPart.GetTextMatrix(0,V.Screen.frmpartshelf!gsPart.Row,V.Local.sRet)
+
+
+F.Intrinsic.String.Build("Delete from GCG_3776_PartAlert where part = '{0}'",V.Local.sRet.Trim,V.Local.Ssql)
+F.ODBC.Connection!con.Execute(V.Local.Ssql)
+
+'Delete from UDT
+'Gui.frmpartshelf.gsPart.RowHeight(V.Screen.frmpartshelf!gsPart.Row,0)
+Gui.frmpartshelf.gsPart.DeleteRow(V.Args.key)
+F.Intrinsic.Variable.UDTSeek(V.uglobal.uParts!Part,V.Local.sRet.Trim,2,V.Local.sReturn)
+F.Intrinsic.Variable.UDTFlagOrdinal(V.uGlobal.uParts,True,V.Local.sReturn.Trim)
+F.Intrinsic.Variable.UDTDeleteFlagged(V.uGlobal.uParts)
+
+
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("gspart_commandclick_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3776_PartshelfAlert.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+program.sub.gspart_commandclick.end
+
+Program.Sub.Alert.Start
+
+F.Intrinsic.Control.SetErrorHandler("Email_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+
+V.Local.i.Declare(Long)
+V.Local.sRcptEmail.Declare(String)
+V.Local.sRcptName.Declare(String)
+V.Local.sSenderEmail.Declare(String)
+V.Local.sSenderName.Declare(String)
+V.Local.sAttach.Declare(String)
+V.Local.sParamName.Declare(String)
+V.Local.sParamVal.Declare(String)
+V.Local.sTemp.Declare(String)
+V.Local.sPN.Declare(String)
+V.Local.sPV.Declare(String)
+V.Local.sCallParams.Declare(String)
+V.Local.sSel.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.lRet.Declare(Long)
+V.Local.sRange.Declare(String)
+V.Local.sFile.Declare(String)
+
+
+V.Local.sSQL.Declare(String)
+
+
+'expiration in weeks
+'	V.Local.sSQL.set("select part,date_expiration,Quantity  from GCG_3776_PartAlert T1 join V_ITEM_MASTER T2 on ltrim(T1.part) = ltrim(T2.part) where date_expiration = CURDATE() + (weeks*7) ")
+'expiration in days
+V.Local.sSQL.set("SELECT T1.Part, Date_Expiration, Quantity FROM GCG_3776_PartAlert T1 JOIN V_ITEM_MASTER T2 ON LTRIM(T1.Part) = LTRIM(T2.Part) WHERE Date_Expiration = CURDATE() + (Weeks)")
+
+	F.ODBC.Connection!con.OpenLocalRecordsetRO("rst",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.con!rst.EOF,=,False)
+		V.uGlobal.UAlert.Redim(-1,-1)
+		F.Intrinsic.Variable.LoadUDTFromRecordset("CON","RST","V.uGlobal.uAlert",False,10000)
+		F.Intrinsic.Variable.UDTToString(V.uGlobal.uAlert,"Part*!*Date_Expiration*!*Quantity",v.Ambient.NewLine,V.Ambient.Tab,V.Local.sSQL)
+		
+		F.Intrinsic.String.Concat(V.Caller.TempDir,"\RANAlert.txt",V.Local.sFile)
+		F.Intrinsic.File.String2File(V.Local.sFile,V.Local.sSQL)
+
+F.Intrinsic.Debug.Stop
+		Function.Global.Security.GetGroupMembers("SHLIFE",V.Caller.CompanyCode,V.Local.sRet)
+
+
+		F.Intrinsic.String.Split(V.Local.sRet,"*!*",V.Local.sRet)
+		F.Intrinsic.Control.If(V.Local.sRet,<>,"")
+			F.Global.Security.GetUserEmail(V.Local.sRet(V.Local.i),V.Local.sSenderEmail)
+			F.Global.Security.GetFullName(V.Local.sRet(V.Local.i),V.Local.sSenderName)
+			F.Intrinsic.control.if(V.Local.sSenderEmail,<>,"")
+				F.Intrinsic.Control.For(V.Local.i,V.Local.sRet.LBound,V.Local.sRet.UBound,1)
+					'Get email address of GS User
+					F.Global.Security.GetUserEmail(V.Local.sRet(V.Local.i),V.Local.sRcptEmail)
+
+				'Alert and end script if no email found for GS User
+					F.Intrinsic.control.if(V.Local.sRcptEmail,<>,"")
+						'Get full name of GS User
+						F.Global.Security.GetFullName(V.Local.sRet(V.Local.i),V.Local.sRcptName)
+						F.Global.Messaging.CreateEMMessage(V.Local.sRcptEmail.Trim,V.Local.sRcptName,V.Local.sSenderEmail,V.Local.sSenderName,"Part shelf life alert","Part shelf life Expiration attached",V.Local.sFile,True)
+					F.Intrinsic.control.endif
+				F.Intrinsic.Control.Next(V.Local.i)
+			Function.Intrinsic.Control.EndIf
+		Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.EndIf
+	F.ODBC.con!rst.close
+
+F.Intrinsic.Control.CallSub(Frmpartshelf_unload)
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Email_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3776_PartshelfAlert.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+
+
+
+Program.Sub.Alert.End
+
+
