@@ -1,0 +1,3 @@
+CREATE TABLE "GCG_3776_PartAlert"(
+ "Part" VARCHAR(20) NOT NULL ,
+ "Weeks" INTEGER);
